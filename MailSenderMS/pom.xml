@@ -66,6 +66,9 @@
                 </configuration>
             </plugin>
         </plugins>
+
+        <finalName>mail-sender-ms</finalName>
+
     </build>
 
 </project>

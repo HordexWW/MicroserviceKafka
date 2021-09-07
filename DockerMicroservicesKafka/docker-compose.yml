@@ -1,0 +1,107 @@
+version: '3'
+
+networks:
+  myNet:
+    driver: bridge
+
+services:
+
+
+  customerms:
+    image: 'customer-ms:latest'
+    build:
+      context: .
+    container_name: customerms
+    depends_on:
+      - pgdb
+      - kafka
+    links:
+      - kafka:kafka
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://pgdb:5432/customerdb
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    ports:
+      - "8081:8081"
+    networks:
+      - myNet
+
+
+  pgdb:
+    container_name: pgdb
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=customerdb
+    volumes:
+      - ./postgresms:/opt/dctm/odbc
+    ports:
+      - "5433:5432"
+    networks:
+      - myNet
+
+
+  mailsenderms:
+    image: 'mail-sender-ms:latest'
+    build:
+      context: .
+    container_name: mailsenderms
+    depends_on:
+      - mysqldb
+      - kafka
+    links:
+      - kafka:kafka
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysqldb:3306/mailsenderdb?characterEncoding=utf8&useSSL=true&serverTimezone=Asia/Shanghai
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    ports:
+      - "8082:8082"
+    networks:
+      - myNet
+
+
+  mysqldb:
+    container_name: mysqldb
+    image: mysql:8.0.26
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=mailsenderdb
+    volumes:
+      - ./mysqlms:/opt/dctm/odbc
+    ports:
+      - "3306:3306"
+    networks:
+      - myNet
+
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    networks:
+      - myNet
+
+
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    restart: always
+    ports:
+      - 9092:9092
+    depends_on:
+      - zookeeper
+    links:
+      - zookeeper:zookeeper
+    environment:
+      - KAFKA_ADVERTISED_HOST_NAME=kafka
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+    networks:
+      - myNet
